@@ -2,6 +2,7 @@
 
 * `operator-sdk init --domain=example.com --repo=github.com/mikolajsemeniuk/configmapsync-operator`
 * `operator-sdk create api --group=sync --version=v1alpha1 --kind=ConfigMapSync --resource --controller`
+* update `api/v1alpha1/configmapsync_types.go` and run `make generate` and then `make manifests`
 
 ## Description
 
