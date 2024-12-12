@@ -1,6 +1,7 @@
 # configmapsync-operator
 
 * `operator-sdk init --domain=example.com --repo=github.com/mikolajsemeniuk/configmapsync-operator`
+* `operator-sdk create api --group=sync --version=v1alpha1 --kind=ConfigMapSync --resource --controller`
 
 ## Description
 

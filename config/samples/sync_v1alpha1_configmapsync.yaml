@@ -1,0 +1,9 @@
+apiVersion: sync.example.com/v1alpha1
+kind: ConfigMapSync
+metadata:
+  labels:
+    app.kubernetes.io/name: configmapsync-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: configmapsync-sample
+spec:
+  # TODO(user): Add fields here
