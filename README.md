@@ -3,6 +3,42 @@
 * `operator-sdk init --domain=example.com --repo=github.com/mikolajsemeniuk/configmapsync-operator`
 * `operator-sdk create api --group=sync --version=v1alpha1 --kind=ConfigMapSync --resource --controller`
 * update `api/v1alpha1/configmapsync_types.go` and run `make generate` and then `make manifests`
+* update `internal/controller/configmapsync_controller.go`
+* run `make docker-build IMG=mikolajsemeniuk/configmapsync:latest`
+* run `make docker-push IMG=mikolajsemeniuk/configmapsync:latest`
+* run `make install`
+* run `make deploy IMG=mikolajsemeniuk/configmapsync:latest`
+* check `kubectl get pods -n configmapsync-operator-system`
+* check `kubectl get all -n configmapsync-operator-system`
+
+## Test operator
+
+* `kubectl create namespace source-ns`
+* `kubectl create configmap my-config --from-literal=key1=value1 -n source-ns`
+* `kubectl create namespace target-ns1`
+* `kubectl create namespace target-ns2`
+
+```yaml
+# configmapsync.yaml
+apiVersion: sync.example.com/v1alpha1
+kind: ConfigMapSync
+metadata:
+  name: example-configmapsync
+  namespace: source-ns
+spec:
+  sourceNamespace: source-ns
+  sourceName: my-config
+  targetNamespaces:
+    - target-ns1
+    - target-ns2
+
+```
+
+* `kubectl apply -f configmapsync.yaml`
+* `kubectl get configmaps -n target-ns1`
+* `kubectl get configmaps -n target-ns2`
+* `kubectl create configmap my-config --from-literal=key1=value-updated -n source-ns --dry-run=client -o yaml | kubectl apply -f -`
+* `kubectl get configmap my-config -n target-ns1 -o yaml`
 
 ## Description
 

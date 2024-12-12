@@ -55,21 +55,21 @@ func (r *ConfigMapSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// 1. Fetch the ConfigMapSync CR
 	var cms syncv1alpha1.ConfigMapSync
-	if err := r.Get(ctx, req.NamespacedName, &cms); err != nil {
-		if errors.IsNotFound(err) {
-			// CR deleted, nothing to do
-			return ctrl.Result{}, nil
-		}
+	err := r.Get(ctx, req.NamespacedName, &cms)
+	if errors.IsNotFound(err) {
+		// CR deleted, nothing to do.
+		return ctrl.Result{}, nil
+	}
+
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// 2. Fetch the source ConfigMap
 	var source corev1.ConfigMap
-	if err := r.Get(ctx, types.NamespacedName{
-		Namespace: cms.Spec.SourceNamespace,
-		Name:      cms.Spec.SourceName,
-	}, &source); err != nil {
-		// If source not found, we might requeue to try later
+	key := types.NamespacedName{Namespace: cms.Spec.SourceNamespace, Name: cms.Spec.SourceName}
+	if err := r.Get(ctx, key, &source); err != nil {
+		// If source not found, we might requeue to try later.
 		log.Error(err, "Source ConfigMap not found")
 		return ctrl.Result{}, nil
 	}
@@ -77,7 +77,7 @@ func (r *ConfigMapSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// 3. Sync to target namespaces
 	var synced []string
 	for _, ns := range cms.Spec.TargetNamespaces {
-		targetCm := &corev1.ConfigMap{
+		target := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      cms.Spec.SourceName,
 				Namespace: ns,
@@ -85,34 +85,37 @@ func (r *ConfigMapSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Data: source.Data,
 		}
 
-		// Create or Update the ConfigMap in target namespace
-		var existingCm corev1.ConfigMap
-		err := r.Get(ctx, types.NamespacedName{Name: targetCm.Name, Namespace: targetCm.Namespace}, &existingCm)
-		if err != nil && errors.IsNotFound(err) {
+		// Create or Update the ConfigMap in target namespace.
+		var existing corev1.ConfigMap
+		err := r.Get(ctx, types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &existing)
+		if errors.IsNotFound(err) {
 			// Create new
-			if err := r.Create(ctx, targetCm); err != nil {
+			if err := r.Create(ctx, target); err != nil {
 				log.Error(err, "Failed to create ConfigMap in namespace", "namespace", ns)
 				continue
 			}
 			synced = append(synced, ns)
-		} else if err == nil {
-			// Update existing
-			existingCm.Data = source.Data
-			if err := r.Update(ctx, &existingCm); err != nil {
-				log.Error(err, "Failed to update ConfigMap in namespace", "namespace", ns)
-				continue
-			}
-			synced = append(synced, ns)
-		} else {
-			log.Error(err, "Error fetching ConfigMap in namespace", "namespace", ns)
 		}
+
+		if err != nil {
+			log.Error(err, "Error fetching ConfigMap in namespace", "namespace", ns)
+			continue
+		}
+
+		// Update existing.
+		existing.Data = source.Data
+		if err := r.Update(ctx, &existing); err != nil {
+			log.Error(err, "Failed to update ConfigMap in namespace", "namespace", ns)
+			continue
+		}
+		synced = append(synced, ns)
 	}
 
 	// Update status
 	cms.Status.SyncedNamespaces = synced
 	if err := r.Status().Update(ctx, &cms); err != nil {
 		log.Error(err, "Failed to update ConfigMapSync status")
-		// Not a fatal error; we can retry later
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
