@@ -85,24 +85,26 @@ func (r *ConfigMapSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Data: source.Data,
 		}
 
-		// Create or Update the ConfigMap in target namespace.
 		var existing corev1.ConfigMap
 		err := r.Get(ctx, types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &existing)
-		if errors.IsNotFound(err) {
-			// Create new
-			if err := r.Create(ctx, target); err != nil {
-				log.Error(err, "Failed to create ConfigMap in namespace", "namespace", ns)
-				continue
-			}
-			synced = append(synced, ns)
-		}
-
-		if err != nil {
+		if err != nil && !errors.IsNotFound(err) {
+			// Not expected error.
 			log.Error(err, "Error fetching ConfigMap in namespace", "namespace", ns)
 			continue
 		}
 
-		// Update existing.
+		// Create the ConfigMap in target namespace.
+		if errors.IsNotFound(err) {
+			if err := r.Create(ctx, target); err != nil {
+				log.Error(err, "Failed to create ConfigMap in namespace", "namespace", ns)
+				continue
+			}
+
+			synced = append(synced, ns)
+			continue
+		}
+
+		// Update the ConfigMap in target namespace.
 		existing.Data = source.Data
 		if err := r.Update(ctx, &existing); err != nil {
 			log.Error(err, "Failed to update ConfigMap in namespace", "namespace", ns)

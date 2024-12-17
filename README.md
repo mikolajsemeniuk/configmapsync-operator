@@ -40,9 +40,15 @@ spec:
 * `kubectl create configmap my-config --from-literal=key1=value-updated -n source-ns --dry-run=client -o yaml | kubectl apply -f -`
 * `kubectl get configmap my-config -n target-ns1 -o yaml`
 
+## Debug operator
+
+* `make install run`
+* debug application
+
 ## Description
 
 * <https://medium.com/developingnodes/mastering-kubernetes-operators-your-definitive-guide-to-starting-strong-70ff43579eb9>
+* <https://suedbroecker.net/2022/03/01/debug-a-kubernetes-operator-written-in-go/>
 
 ## Getting Started
 
